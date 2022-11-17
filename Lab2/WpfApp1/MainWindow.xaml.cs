@@ -30,6 +30,7 @@ namespace WpfApp1
         private CancellationTokenSource cancelTokenSource;
         private CancellationToken token;
         private bool calculations_status;
+        private bool running_flg = false;
         img_comp obj1;
         public MainWindow()
         {
@@ -120,6 +121,11 @@ namespace WpfApp1
         //Метод начинает вычисления по заданным изображениям
         private async void Button_Start_Calculations(object sender, RoutedEventArgs e)
         {
+            if (running_flg == true)
+            {
+                MessageBox.Show("Пожалуйста, подождите пока вычисления не закончатся");
+                return;
+            }
             if (list_images.Count == 0)
             {
                 MessageBox.Show("Пожалуйста, выберите каталог с изображениями.");
@@ -127,36 +133,13 @@ namespace WpfApp1
             }
             if (calculations_status)
             {
-                MessageBox.Show("Вычисления уже произведены. Пожлауйста, обновите матрицу.");
+                MessageBox.Show("Вычисления уже произведены. Пожалуйста, обновите матрицу.");
                 return;
             }
+            running_flg = true;
             int step1 = 250 / list_images.Count;
             int step2 = 500 / (list_images.Count * list_images.Count);
             var tasks = new List<Task>();
-            /*
-            for (int i = 0; i < list_images.Count; i++)
-            {
-                try
-                {
-                    Task task1 = obj1.AsyncDistance(list_images[i], token);
-                    pbStatus.Value += step1;
-                    tasks.Add(task1);
-                }
-                catch (OperationCanceledException e1)
-                {
-                    Console.WriteLine($"{nameof(OperationCanceledException)} thrown with message: {e1.Message}");
-                }
-            }
-
-            try
-            {
-                await Task.WhenAll(tasks);
-            }
-            catch (OperationCanceledException e2)
-            {
-                Console.WriteLine($"{nameof(OperationCanceledException)} thrown with message: {e2.Message}");
-            }
-            */
 
             pbStatus.Value += step1 * list_images.Count;
 
@@ -178,19 +161,20 @@ namespace WpfApp1
                     {
                         var res1 = obj1.AsyncDistance(list_images[i], list_images[j], token);
                         await res1;
-                        l.Content = $"Distance: {res1.Result}\n ";
+                        var res2 = obj1.AsyncSimilarity(list_images[i], list_images[j], token);
+                        await res2;
+                        l.Content = $"Distance: {res1.Result}\n Similarity: {res2.Result}\n";
                         pbStatus.Value += step2;
                     }
                     table.Children.Add(l);
                 }
-                //if(i == 3)
-                //    cancelTokenSource.Cancel();
             }
             if (!token.IsCancellationRequested)
             {
                 pbStatus.Value = 1000;
             }
             calculations_status = true;
+            running_flg = false;
         }
 
         private void Button_Grid_Clear(object sender, RoutedEventArgs e)
