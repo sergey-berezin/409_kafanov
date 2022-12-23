@@ -5,7 +5,10 @@ using SixLabors.ImageSharp.PixelFormats;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-namespace NuGet_ArcFace_Embedder {
+using System.ComponentModel;
+
+namespace NuGet_ArcFace_Embedder
+{
 
     public class img_embed
     {
@@ -13,10 +16,22 @@ namespace NuGet_ArcFace_Embedder {
         private Dictionary<string, Task<float[]>> CalculationsCollection;
         private SemaphoreSlim CancellationTokensSemaphore;
         Dictionary<string, CancellationTokenSource> CancellationTokensCollection;
+        private static readonly string arcFaceModelPath = "ClassLibrary1.arcfaceresnet100-8.onnx";
 
         public img_embed()
         {
-            this.Session = new InferenceSession("arcfaceresnet100-8.onnx");
+            var assembly = typeof(img_embed).Assembly;
+            using var modelStream = assembly.GetManifestResourceStream(arcFaceModelPath);
+            if (modelStream == null)
+                throw new Exception("Embedded resource is not loaded!");
+
+            using var memoryStream = new MemoryStream();
+            modelStream.CopyTo(memoryStream);
+
+            Session = new InferenceSession(memoryStream.ToArray());
+
+            if (Session == null)
+                throw new Exception("Model is not loaded correclty!");
             this.CancellationTokensSemaphore = new SemaphoreSlim(1);
             this.CalculationsCollection = new Dictionary<string, Task<float[]>>();
             this.CancellationTokensCollection = new Dictionary<string, CancellationTokenSource>();

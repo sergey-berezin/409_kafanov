@@ -1,11 +1,7 @@
-﻿using System;
-using SixLabors.ImageSharp;
+﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using NuGet_ArcFace_Embedder;
-
+using Microsoft.ML.OnnxRuntime;
 
 namespace NuGet_ArcFace_Functions
 {
@@ -16,7 +12,6 @@ namespace NuGet_ArcFace_Functions
         public float Similarity(float[] v1, float[] v2) => v1.Zip(v2).Select(p => p.First * p.Second).Sum();
 
         public delegate T CalculationCallback<T>(float[] v1, float[] v2);
-
         public T Execute<T>(Image<Rgb24> img1, Image<Rgb24> img2, CalculationCallback<T> callback)
         {
 
@@ -26,17 +21,15 @@ namespace NuGet_ArcFace_Functions
 
         }
 
-        public async Task<float> ExecuteAsync(Image<Rgb24> img1, Image<Rgb24> img2, CalculationCallback<float> callback, CancellationToken token)
+        public async Task<float> ExecuteAsync(float[] embeddings1, float[] embeddings2, CalculationCallback<float> callback, CancellationToken token)
         {
             var res = await Task<float>.Run(async () =>
             {
-                float[] embeddings1 = await embedder.GetEmbeddingsAsync(img1, token);
-                float[] embeddings2 = await embedder.GetEmbeddingsAsync(img2, token);
                 Console.WriteLine($"Distance =  {Distance(embeddings1, embeddings2) * Distance(embeddings1, embeddings2)}");
                 return callback(embeddings1, embeddings2);
             });
             return res;
-    
+
         }
 
         public float Distance(Image<Rgb24> img1, Image<Rgb24> img2)
@@ -48,15 +41,15 @@ namespace NuGet_ArcFace_Functions
         public (float distance, float similarity) Distance_and_Similarity(Image<Rgb24> img1, Image<Rgb24> img2)
         { return (Execute<float>(img1, img2, Distance), Execute<float>(img1, img2, Similarity)); }
 
-        public Task<float> AsyncDistance(Image<Rgb24> img1, Image<Rgb24> img2, CancellationToken token)
+        public Task<float> AsyncDistance(float[] embeddings1, float[] embeddings2, CancellationToken token)
         {
-            var res = ExecuteAsync(img1, img2, Distance, token);
+            var res = ExecuteAsync(embeddings1, embeddings2, Distance, token);
             return res;
         }
 
-        public async Task<float> AsyncSimilarity(Image<Rgb24> img1, Image<Rgb24> img2, CancellationToken token)
+        public Task<float> AsyncSimilarity(float[] embeddings1, float[] embeddings2, CancellationToken token)
         {
-            var res = await ExecuteAsync(img1, img2, Similarity, token);
+            var res = ExecuteAsync(embeddings1, embeddings2, Similarity, token);
             return res;
         }
 
@@ -65,6 +58,11 @@ namespace NuGet_ArcFace_Functions
         public img_comp()
         {
             this.embedder = new img_embed();
+        }
+        public  Task<float[]> EmbeddingsAsync(Image<Rgb24> face, CancellationToken token)
+        {
+            var res = embedder.GetEmbeddingsAsync(face, token);
+            return res;
         }
     }
 }
